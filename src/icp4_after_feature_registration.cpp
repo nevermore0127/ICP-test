@@ -210,53 +210,50 @@ int main (int argc, char** argv)
     
     
     pcl::CorrespondencesPtr pCorrespondences ( new pcl::Correspondences );
+		  pcl::CorrespondencesPtr cor_inliers_ptr(new pcl::Correspondences);
+		  { // Refining matching by filtering out wrong correspondence
+			  std::cout << "refineing matching" << std::endl;
 
-    { // Refining matching by filtering out wrong correspondence
-      std::cout << "refineing matching" << std::endl;
-      
-      int nCorrespondence = 0;
-      for (int i = 0; i < correspondences.size(); i++)
-	if ( correspondences[i] >= 0 ) nCorrespondence++; // do not count "-1" in correspondences
+			  int nCorrespondence = 0;
+			  for (int i = 0; i < correspondences.size(); i++)
+				  if (correspondences[i] >= 0) nCorrespondence++; // do not count "-1" in correspondences
+			  std::cout << "nCorrespondence: " << nCorrespondence << std::endl;
+			  pCorrespondences->resize(nCorrespondence);
+			
+			  for (int i = 0, j = 0; i < correspondences.size(); i++)
+			  {
+				  if (correspondences[i] > 0)
+				  {
+					  (*pCorrespondences)[j].index_query = i;
+					  (*pCorrespondences)[j].index_match = correspondences[i];
+					  j++;
+				  }
+			  }
 
-      pCorrespondences->resize ( nCorrespondence );
-      for (int i = 0, j = 0; i < correspondences.size(); i++)
-      {
-	if ( correspondences[i] > 0 )
-	{
-	  (*pCorrespondences)[j].index_query = i;
-	  (*pCorrespondences)[j].index_match = correspondences[i];
-	  j++;
-	  
-	}
-      }
+			  pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointXYZ> refine;
+			  refine.setInputSource(source_keypointsXYZ);
+			  refine.setInputTarget(target_keypointsXYZ);
+			  refine.setInputCorrespondences(pCorrespondences);
+			  std::cout << "refineing matching" << std::endl;
+			  refine.getCorrespondences(*cor_inliers_ptr);
 
-      pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointXYZ> refine;
-      refine.setInputSource ( source_keypointsXYZ );
-      refine.setInputTarget ( target_keypointsXYZ );
-      refine.setInputCorrespondences ( pCorrespondences );
-      refine.getCorrespondences ( *pCorrespondences );
-    }
-    visualize_correspondences (cloud_source, source_keypointsXYZ,
-			       cloud_target, target_keypointsXYZ,
-			       pCorrespondences);
-    
+		  }
+		  visualize_correspondences(cloud_source, source_keypointsXYZ, cloud_target, target_keypointsXYZ, cor_inliers_ptr);
 
-    
+		  Eigen::Matrix4f transformation;
 
-    Eigen::Matrix4f transformation;
-    
-    { // Estimating rigid transformation
-      std::cout << "Estimating transformation" << std::endl;
+		  { // Estimating rigid transformation
+			  std::cout << "Estimating transformation" << std::endl;
 
-      pcl::registration::TransformationEstimationSVD< pcl::PointXYZ, pcl::PointXYZ > est;
-      
-      std::vector<int> source_index ( source_features->size() );
-      for (int i = 0; i < source_features->size(); ++i) source_index[i] = i;
-      
-      
-      est.estimateRigidTransformation ( *source_keypointsXYZ,
-					*target_keypointsXYZ, *pCorrespondences,
-					transformation );
+			  pcl::registration::TransformationEstimationSVD< pcl::PointXYZ, pcl::PointXYZ > est;
+
+			  std::vector<int> source_index(source_features->size());
+			  for (int i = 0; i < source_features->size(); ++i) source_index[i] = i;
+
+
+			  est.estimateRigidTransformation(*source_keypointsXYZ,
+				  *target_keypointsXYZ, *cor_inliers_ptr,
+				  transformation);
       std::cout << transformation << std::endl;
       
       pcl::transformPointCloud ( *cloud_source, *cloud_source_trans, transformation );
