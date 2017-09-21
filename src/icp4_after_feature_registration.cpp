@@ -230,11 +230,13 @@ int main (int argc, char** argv)
 	}
       }
 
-      pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointXYZ> refine;
-      refine.setInputSource ( source_keypointsXYZ );
-      refine.setInputTarget ( target_keypointsXYZ );
-      refine.setInputCorrespondences ( pCorrespondences );
-      refine.getCorrespondences ( *pCorrespondences );
+ boost::shared_ptr<pcl::Correspondences> cor_inliers_ptr(new pcl::Correspondences);
+ pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointXYZ> refine;
+ refine.setInputSource(source_keypointsXYZ);
+ refine.setInputTarget(target_keypointsXYZ);
+ refine.setInputCorrespondences(pCorrespondences);
+ std::cout << "refineing matching" << std::endl;
+ refine.getCorrespondences(*cor_inliers_ptr);
     }
     visualize_correspondences (cloud_source, source_keypointsXYZ,
 			       cloud_target, target_keypointsXYZ,
